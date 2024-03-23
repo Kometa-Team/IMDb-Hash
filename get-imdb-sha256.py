@@ -94,7 +94,7 @@ if __name__ == "__main__":
     keyword = "Shrek"
     sha256_hash = get_sha256_from_network_tab(url, keyword)
     if sha256_hash:
-        with open("HASHtest", "w") as f:
+        with open("HASH", "w") as f:
             f.write(sha256_hash)
         print("SHA-256 hash from network tab:", sha256_hash)
     else:
