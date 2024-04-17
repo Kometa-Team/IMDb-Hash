@@ -2,7 +2,7 @@ name: Update-IMDb-Hash
 
 on:
   schedule:
-    - cron: '0 */3 * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
   push:
   pull_request:
@@ -28,13 +28,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Update IMDb Hash
-        run: python get-imdb-sha256.py
+        run: python check-imdb-hash.py
 
       - name: Check Diff
         id: verify_diff
         run: |
           git diff --quiet . || echo "changed=true" >> $GITHUB_OUTPUT
+
       - name: Commit & Push Changes
         if: steps.verify_diff.outputs.changed == 'true'
         run: |
@@ -43,3 +45,18 @@ jobs:
           git add -A
           git commit -m "Update at ${{ steps.date.outputs.date }} UTC" -a
           git push origin master
+
+      - name: Discord Failure Notification
+        uses: meisnate12/discord-notifications@master
+        if: failure()
+        with:
+          webhook_id: ${{ secrets.BUILD_WEBHOOK_ID }}
+          webhook_token: ${{ secrets.BUILD_WEBHOOK_TOKEN }}
+          message: <@&1079153184007790652>
+          title: "IMDb Hash: **Failure**"
+          color: 16106776
+          url: https://github.com/Kometa-Team/IMDb-Hash/actions/runs/${{ github.run_id }}
+          username: Metabot
+          avatar_url: https://raw.githubusercontent.com/Kometa-Team/Kometa/nightly/.github/logo.png
+          author: IMDb Awards
+          author_icon_url: https://raw.githubusercontent.com/Kometa-Team/Kometa/nightly/.github/git.png
