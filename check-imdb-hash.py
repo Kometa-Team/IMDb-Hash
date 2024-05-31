@@ -82,41 +82,57 @@ with webdriver.Chrome(service=service, options=options) as driver:
     if args["trace"]:
         driver.save_screenshot('./logs/05_after_search_results_found.png')
 
-    logger.info("Get Network Requests")
-    network_requests = driver.execute_script("""
-            var performanceEntries = [];
-            var entries = window.performance.getEntries();
-            if (entries && entries.length > 0) {
-                for (var i = 0; i < entries.length; i++) {
-                    var entry = entries[i];
-                    var url = entry.name || entry.initiatorType;
-                    if (url) {
-                        performanceEntries.push(url);
+    def scan_for_hash(hash_type, special_text, filename):
+        logger.info(f"Get Network Requests for {hash_type}")
+        sha256hash = None
+        network_requests = driver.execute_script("""
+                var performanceEntries = [];
+                var entries = window.performance.getEntries();
+                if (entries && entries.length > 0) {
+                    for (var i = 0; i < entries.length; i++) {
+                        var entry = entries[i];
+                        var url = entry.name || entry.initiatorType;
+                        if (url) {
+                            performanceEntries.push(url);
+                        }
                     }
                 }
-            }
-            return performanceEntries;
-        """)
-    sha256_hash = None
+                return performanceEntries;
+            """)
+        if network_requests:
+            target_strings = ["persistedQuery", "sha256Hash", "caching.graphql.imdb.com", special_text]
 
-    if network_requests:
-        target_strings = ["persistedQuery", "sha256Hash", "caching.graphql.imdb.com", keyword]
+            logger.info(f"Number of network requests: {len(network_requests)}")  # Print the number of network requests
+            for i, request in enumerate(network_requests, start=1):
+                if all(target_string in request for target_string in target_strings):
+                    logger.info(f"Encoded SHA-256 {hash_type} Hash URL: {request}")
+                    decoded_url = unquote(request)
+                    logger.info(f"Decoded SHA-256 {hash_type} Hash URL: {decoded_url}")
+                    sha256hash = re.search(r'sha256Hash":"([^"]+)', decoded_url).group(1)
+                    break
 
-        logger.info(f"Number of network requests: {len(network_requests)}")  # Print the number of network requests
-        for i, request in enumerate(network_requests, start=1):
-            if all(target_string in request for target_string in target_strings):
-                logger.info(f"Encoded SHA-256 Hash URL: {request}")
-                decoded_url = unquote(request)
-                logger.info(f"Decoded SHA-256 Hash URL: {decoded_url}")
-                sha256_hash = re.search(r'sha256Hash":"([^"]+)', decoded_url).group(1)
-                break
+        if sha256hash:
+            with open(filename, "w") as fa:
+                fa.write(sha256hash)
+            logger.info(f"Extracted SHA-256 {hash_type} Hash: {sha256hash}")
+        else:
+            logger.info(f"Failed to retrieve SHA-256 {hash_type} Hash.")
 
-    if sha256_hash:
-        with open("HASH", "w") as f:
-            f.write(sha256_hash)
-        logger.info(f"Extracted SHA-256 Hash: {sha256_hash}")
-    else:
-        logger.info("Failed to retrieve SHA-256 hash.")
+    scan_for_hash("Search", keyword, "HASH")
+
+    logger.info("Get URL: https://www.imdb.com/list/ls005526372/")
+    driver.get("https://www.imdb.com/list/ls005526372/")
+    time.sleep(5)
+    if args["trace"]:
+        driver.save_screenshot('./logs/06_list_url.png')
+
+    html = driver.find_element(By.TAG_NAME, 'html')
+    for _ in range(20):
+        html.send_keys(Keys.PAGE_DOWN)
+    if args["trace"]:
+        driver.save_screenshot('./logs/07_page_down_placement.png')
+
+    scan_for_hash("List", "operationName=TitleListMainPage", "LIST_HASH")
 
 if [item.a_path for item in Repo(path=".").index.diff(None) if item.a_path.endswith("HASH")]:
 
