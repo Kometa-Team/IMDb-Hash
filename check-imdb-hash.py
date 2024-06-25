@@ -50,37 +50,6 @@ options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 with webdriver.Chrome(service=service, options=options) as driver:
     logger.info(f"Chrome Browser Version: {driver.capabilities['browserVersion']}")
     logger.info(f"Chrome Driver Version: {driver.capabilities['chrome']['chromedriverVersion']}")
-    logger.info("Get URL: https://www.imdb.com/search/title/")
-    driver.get("https://www.imdb.com/search/title/")
-    time.sleep(5)
-    if args["trace"]:
-        driver.save_screenshot('./logs/01_current_url.png')
-
-    logger.info("Get Expand All Button")
-    expand_all_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//span[@class="ipc-btn__text" and text()="Expand all"]')))
-    expand_all_button.click()
-    if args["trace"]:
-        driver.save_screenshot('./logs/02_after_expand_all_click.png')
-
-    logger.info(f"Send Keyword: {keyword}")
-    search_box = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//input[@aria-label="Title name"]')))
-    search_box.send_keys(keyword)
-    if args["trace"]:
-        driver.save_screenshot('./logs/03_after_sending_keyword.png')
-
-    logger.info("Click Movie Button")
-    movie_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="test-chip-id-movie"]')))
-    movie_button.click()
-    if args["trace"]:
-        driver.save_screenshot('./logs/04_after_movie_button_click.png')
-
-    search_box.send_keys(Keys.ENTER)
-    time.sleep(5)
-
-    logger.info("Get Search Results")
-    WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, 'h3.ipc-title__text')))
-    if args["trace"]:
-        driver.save_screenshot('./logs/05_after_search_results_found.png')
 
     def scan_for_hash(hash_type, special_text, filename):
         logger.info(f"Get Network Requests for {hash_type}")
@@ -118,6 +87,38 @@ with webdriver.Chrome(service=service, options=options) as driver:
         else:
             logger.info(f"Failed to retrieve SHA-256 {hash_type} Hash.")
 
+    logger.info("Get URL: https://www.imdb.com/search/title/")
+    driver.get("https://www.imdb.com/search/title/")
+    time.sleep(5)
+    if args["trace"]:
+        driver.save_screenshot('./logs/01_current_url.png')
+
+    logger.info("Get Expand All Button")
+    expand_all_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//span[@class="ipc-btn__text" and text()="Expand all"]')))
+    expand_all_button.click()
+    if args["trace"]:
+        driver.save_screenshot('./logs/02_after_expand_all_click.png')
+
+    logger.info(f"Send Keyword: {keyword}")
+    search_box = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//input[@aria-label="Title name"]')))
+    search_box.send_keys(keyword)
+    if args["trace"]:
+        driver.save_screenshot('./logs/03_after_sending_keyword.png')
+
+    logger.info("Click Movie Button")
+    movie_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="test-chip-id-movie"]')))
+    movie_button.click()
+    if args["trace"]:
+        driver.save_screenshot('./logs/04_after_movie_button_click.png')
+
+    search_box.send_keys(Keys.ENTER)
+    time.sleep(5)
+
+    logger.info("Get Search Results")
+    WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, 'h3.ipc-title__text')))
+    if args["trace"]:
+        driver.save_screenshot('./logs/05_after_search_results_found.png')
+
     scan_for_hash("Search", keyword, "HASH")
 
     logger.info("Get URL: https://www.imdb.com/list/ls005526372/")
@@ -127,12 +128,26 @@ with webdriver.Chrome(service=service, options=options) as driver:
         driver.save_screenshot('./logs/06_list_url.png')
 
     html = driver.find_element(By.TAG_NAME, 'html')
-    for _ in range(20):
+    for _ in range(30):
         html.send_keys(Keys.PAGE_DOWN)
     if args["trace"]:
-        driver.save_screenshot('./logs/07_page_down_placement.png')
+        driver.save_screenshot('./logs/07_list_page_down_placement.png')
 
     scan_for_hash("List", "operationName=TitleListMainPage", "LIST_HASH")
+
+    logger.info("Get URL: https://www.imdb.com/user/ur51920649/watchlist/")
+    driver.get("https://www.imdb.com/user/ur51920649/watchlist/")
+    time.sleep(5)
+    if args["trace"]:
+        driver.save_screenshot('./logs/08_watchlist_url.png')
+
+    html = driver.find_element(By.TAG_NAME, 'html')
+    for _ in range(30):
+        html.send_keys(Keys.PAGE_DOWN)
+    if args["trace"]:
+        driver.save_screenshot('./logs/09_watchlist_page_down_placement.png')
+
+    scan_for_hash("Watchlist", "operationName=WatchListPageRefiner", "WATCHLIST_HASH")
 
 if [item.a_path for item in Repo(path=".").index.diff(None) if item.a_path.endswith("HASH")]:
 
