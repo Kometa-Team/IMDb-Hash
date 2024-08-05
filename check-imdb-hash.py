@@ -41,7 +41,7 @@ filename = next((f for f in os.listdir(folder) if not f.endswith(".chromedriver"
 chrome_driver_path = os.path.join(folder, filename)
 logger.info(f"Keyword: {keyword}")
 logger.info(f"Chrome Driver Path: {chrome_driver_path}")
-
+os.chmod(chrome_driver_path, 0o755)
 service = Service(chrome_driver_path)
 
 options = Options()
