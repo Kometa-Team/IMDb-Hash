@@ -36,7 +36,12 @@ logger.separator()
 logger.start()
 keyword = args["keyword"] if args["keyword"] else "Shrek"
 
-chrome_driver_path = os.path.join(os.path.dirname(ChromeDriverManager().install()), "chromedriver.exe")
+folder = os.path.dirname(ChromeDriverManager().install())
+logger.info(f"Files in {folder}")
+for f in os.listdir(folder):
+    logger.info(f"File: {f}")
+logger.info("")
+chrome_driver_path = os.path.join(folder, "chromedriver.exe")
 logger.info(f"Keyword: {keyword}")
 logger.info(f"Chrome Driver Path: {chrome_driver_path}")
 
