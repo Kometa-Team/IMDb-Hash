@@ -1,5 +1,5 @@
 # IMDb Hash
 
-Last generated at: December 11, 2024 00:44 UTC
+Last generated at: January 23, 2025 00:40 UTC
 
 This repo will check to see if the IMDb Hash has changed.
