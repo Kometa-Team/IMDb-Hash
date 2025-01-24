@@ -75,6 +75,8 @@ with webdriver.Chrome(service=service, options=options) as driver:
 
             logger.info(f"Number of network requests: {len(network_requests)}")  # Print the number of network requests
             for i, request in enumerate(network_requests, start=1):
+                if "graphql" in request and args["trace"]:
+                    logger.info(request)
                 if all(target_string in request for target_string in target_strings):
                     logger.info(f"Encoded SHA-256 {hash_type} Hash URL: {request}")
                     decoded_url = unquote(request)
@@ -129,11 +131,19 @@ with webdriver.Chrome(service=service, options=options) as driver:
     if args["trace"]:
         driver.save_screenshot('./logs/06_list_url.png')
 
+    logger.info("Page Down")
     html = driver.find_element(By.TAG_NAME, 'html')
-    for _ in range(30):
+    for _ in range(60):
         html.send_keys(Keys.PAGE_DOWN)
     if args["trace"]:
         driver.save_screenshot('./logs/07_list_page_down_placement.png')
+
+    logger.info("Page 2")
+    next_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="index-pagination-nxt"]')))
+    next_button.click()
+    time.sleep(5)
+    if args["trace"]:
+        driver.save_screenshot('./logs/08_list_page_2.png')
 
     scan_for_hash("List", "operationName=TitleListMainPage", "LIST_HASH")
 
@@ -141,13 +151,21 @@ with webdriver.Chrome(service=service, options=options) as driver:
     driver.get("https://www.imdb.com/user/ur51920649/watchlist/")
     time.sleep(5)
     if args["trace"]:
-        driver.save_screenshot('./logs/08_watchlist_url.png')
+        driver.save_screenshot('./logs/09_watchlist_url.png')
 
+    logger.info("Page Down")
     html = driver.find_element(By.TAG_NAME, 'html')
-    for _ in range(30):
+    for _ in range(60):
         html.send_keys(Keys.PAGE_DOWN)
     if args["trace"]:
-        driver.save_screenshot('./logs/09_watchlist_page_down_placement.png')
+        driver.save_screenshot('./logs/10_watchlist_page_down_placement.png')
+
+    logger.info("Page 2")
+    next_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="index-pagination-nxt"]')))
+    next_button.click()
+    time.sleep(5)
+    if args["trace"]:
+        driver.save_screenshot('./logs/11_watchlist_page_2.png')
 
     scan_for_hash("Watchlist", "operationName=WatchListPageRefiner", "WATCHLIST_HASH")
 
