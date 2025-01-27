@@ -48,6 +48,8 @@ options.add_argument("--headless")
 options.add_argument("--window-size=1920,1600")
 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36")
 
+failed = []
+
 with webdriver.Chrome(service=service, options=options) as driver:
     logger.info(f"Chrome Browser Version: {driver.capabilities['browserVersion']}")
     logger.info(f"Chrome Driver Version: {driver.capabilities['chrome']['chromedriverVersion']}")
@@ -89,6 +91,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
             logger.info(f"Extracted SHA-256 {hash_type} Hash: {sha256hash}")
         else:
             logger.info(f"Failed to retrieve SHA-256 {hash_type} Hash.")
+            failed.append(hash_type)
 
     screenshot_count = 0
 
@@ -158,3 +161,7 @@ if [item.a_path for item in Repo(path=".").index.diff(None) if item.a_path.endsw
         f.writelines(readme_data)
 
 logger.separator(f"{script_name} Finished\nTotal Runtime: {logger.runtime()}")
+
+if failed:
+    hashes = f"{' and '.join(failed if len(failed) < 3 else [f"{', '.join(failed[:-1])},", failed[-1]])}"
+    sys.exit(f"Failed to Find {hashes} Hash{'s' if failed > 1 else ''}")
