@@ -128,7 +128,6 @@ with webdriver.Chrome(service=service, options=options) as driver:
         logger.info(title)
         html = driver.find_element(By.TAG_NAME, "html")
         html.send_keys(Keys.END)
-        html.send_keys(Keys.PAGE_UP)
         screenshot_and_wait(screen)
 
     page_get("IMDb Search Hash", "https://www.imdb.com/search/title/", "search_url")
