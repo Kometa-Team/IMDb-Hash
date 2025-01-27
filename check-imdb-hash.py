@@ -37,8 +37,7 @@ logger.start()
 keyword = args["keyword"] if args["keyword"] else "Shrek"
 
 folder = os.path.dirname(ChromeDriverManager().install())
-filename = next((f for f in os.listdir(folder) if not f.endswith(".chromedriver")))
-chrome_driver_path = os.path.join(folder, filename)
+chrome_driver_path = os.path.join(folder, next((f for f in os.listdir(folder) if not f.endswith(".chromedriver"))))
 logger.info(f"Keyword: {keyword}")
 logger.info(f"Chrome Driver Path: {chrome_driver_path}")
 os.chmod(chrome_driver_path, 0o755)
@@ -46,7 +45,6 @@ service = Service(chrome_driver_path)
 
 options = Options()
 options.add_argument("--headless")
-options.add_argument("--window-size=1920,1600")
 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36")
 
 with webdriver.Chrome(service=service, options=options) as driver:
@@ -75,14 +73,14 @@ with webdriver.Chrome(service=service, options=options) as driver:
 
             logger.info(f"Number of network requests: {len(network_requests)}")  # Print the number of network requests
             for i, request in enumerate(network_requests, start=1):
-                if "graphql" in request and args["trace"]:
-                    logger.info(request)
                 if all(target_string in request for target_string in target_strings):
-                    logger.info(f"Encoded SHA-256 {hash_type} Hash URL: {request}")
+                    logger.info(f"Encoded SHA-256 Hash URL: {request}")
                     decoded_url = unquote(request)
-                    logger.info(f"Decoded SHA-256 {hash_type} Hash URL: {decoded_url}")
+                    logger.info(f"Decoded SHA-256 Hash URL: {decoded_url}")
                     sha256hash = re.search(r'sha256Hash":"([^"]+)', decoded_url).group(1)
                     break
+                elif "graphql" in request and args["trace"]:
+                    logger.info(f"GraphQL Request: {request}")
 
         if sha256hash:
             with open(filename, "w") as fa:
@@ -91,82 +89,62 @@ with webdriver.Chrome(service=service, options=options) as driver:
         else:
             logger.info(f"Failed to retrieve SHA-256 {hash_type} Hash.")
 
-    logger.info("Get URL: https://www.imdb.com/search/title/")
-    driver.get("https://www.imdb.com/search/title/")
-    time.sleep(5)
-    if args["trace"]:
-        driver.save_screenshot('./logs/01_current_url.png')
+    screenshot_count = 0
 
-    logger.info("Get Expand All Button")
-    expand_all_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//span[@class="ipc-btn__text" and text()="Expand all"]')))
-    expand_all_button.click()
-    if args["trace"]:
-        driver.save_screenshot('./logs/02_after_expand_all_click.png')
+    def screenshot(screen, sleep=10):
+        if sleep:
+            time.sleep(sleep)
+        global screenshot_count
+        screenshot_count += 1
+        if args["trace"]:
+            driver.save_screenshot(f"./logs/{screenshot_count:02}_{screen}.png")
 
-    logger.info(f"Send Keyword: {keyword}")
-    search_box = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.XPATH, '//input[@aria-label="Title name"]')))
-    search_box.send_keys(keyword)
-    if args["trace"]:
-        driver.save_screenshot('./logs/03_after_sending_keyword.png')
+    def page_get(title, url, screen, sleep=10):
+        logger.separator(title)
+        logger.info(f"Get URL: {url}")
+        driver.get(url)
+        screenshot(screen, sleep=sleep)
 
-    logger.info("Click Movie Button")
-    movie_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="test-chip-id-movie"]')))
-    movie_button.click()
-    if args["trace"]:
-        driver.save_screenshot('./logs/04_after_movie_button_click.png')
+    def click(title, xpath, screen, sleep=10):
+        logger.info(title)
+        _button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
+        _button.click()
+        screenshot(screen, sleep=sleep)
 
-    search_box.send_keys(Keys.ENTER)
-    time.sleep(5)
+    def textbox(title, xpath, screen):
+        logger.info(title)
+        _box = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.XPATH, xpath)))
+        _box.send_keys(keyword)
+        screenshot(screen, sleep=0)
+        return _box
 
-    logger.info("Get Search Results")
-    WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, 'h3.ipc-title__text')))
-    if args["trace"]:
-        driver.save_screenshot('./logs/05_after_search_results_found.png')
+    def enter(_box, title, screen, sleep=5):
+        logger.info(title)
+        _box.send_keys(Keys.ENTER)
+        screenshot(screen, sleep=sleep)
 
+    def page_end(screen, title="Page End", sleep=10):
+        logger.info(title)
+        html = driver.find_element(By.TAG_NAME, "html")
+        html.send_keys(Keys.END)
+        html.send_keys(Keys.PAGE_UP)
+        screenshot(screen, sleep=sleep)
+
+    page_get("IMDb Search Hash", "https://www.imdb.com/search/title/", "search_url")
+    click("Get Expand All Button", '//span[@class="ipc-btn__text" and text()="Expand all"]', "after_expand_all_click")
+    search = textbox(f"Send Keyword: {keyword}", '//input[@aria-label="Title name"]', "after_sending_keyword")
+    click("Click Movie Button", '//button[@data-testid="test-chip-id-movie"]', "after_movie_button_click")
+    enter(search, "Get Search Results", "after_search_results_found")
     scan_for_hash("Search", keyword, "HASH")
 
-    logger.info("Get URL: https://www.imdb.com/list/ls005526372/")
-    driver.get("https://www.imdb.com/list/ls005526372/")
-    time.sleep(5)
-    if args["trace"]:
-        driver.save_screenshot('./logs/06_list_url.png')
-
-    logger.info("Page Down")
-    html = driver.find_element(By.TAG_NAME, 'html')
-    for _ in range(60):
-        html.send_keys(Keys.PAGE_DOWN)
-    if args["trace"]:
-        driver.save_screenshot('./logs/07_list_page_down_placement.png')
-
-    logger.info("Page 2")
-    next_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="index-pagination-nxt"]')))
-    next_button.click()
-    time.sleep(5)
-    if args["trace"]:
-        driver.save_screenshot('./logs/08_list_page_2.png')
-
+    page_get("IMDb List Hash", "https://www.imdb.com/list/ls005526372/", "list_url")
+    page_end("after_list_page_end")
+    click("Page 2", '//button[@data-testid="index-pagination-nxt"]', "after_list_page_2")
     scan_for_hash("List", "operationName=TitleListMainPage", "LIST_HASH")
 
-    logger.info("Get URL: https://www.imdb.com/user/ur51920649/watchlist/")
-    driver.get("https://www.imdb.com/user/ur51920649/watchlist/")
-    time.sleep(5)
-    if args["trace"]:
-        driver.save_screenshot('./logs/09_watchlist_url.png')
-
-    logger.info("Page Down")
-    html = driver.find_element(By.TAG_NAME, 'html')
-    for _ in range(60):
-        html.send_keys(Keys.PAGE_DOWN)
-    if args["trace"]:
-        driver.save_screenshot('./logs/10_watchlist_page_down_placement.png')
-
-    logger.info("Page 2")
-    next_button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, '//button[@data-testid="index-pagination-nxt"]')))
-    next_button.click()
-    time.sleep(5)
-    if args["trace"]:
-        driver.save_screenshot('./logs/11_watchlist_page_2.png')
-
+    page_get("IMDb Watchlist Hash", "https://www.imdb.com/user/ur51920649/watchlist/", "watchlist_url")
+    page_end("after_watchlist_page_end")
+    click("Page 2", '//button[@data-testid="index-pagination-nxt"]', "after_watchlist_page_2")
     scan_for_hash("Watchlist", "operationName=WatchListPageRefiner", "WATCHLIST_HASH")
 
 if [item.a_path for item in Repo(path=".").index.diff(None) if item.a_path.endswith("HASH")]:
