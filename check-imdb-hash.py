@@ -91,7 +91,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
 
     screenshot_count = 0
 
-    def screenshot(screen, sleep=10):
+    def screenshot_and_wait(screen, sleep=20):
         if sleep:
             time.sleep(sleep)
         global screenshot_count
@@ -99,36 +99,36 @@ with webdriver.Chrome(service=service, options=options) as driver:
         if args["trace"]:
             driver.save_screenshot(f"./logs/{screenshot_count:02}_{screen}.png")
 
-    def page_get(title, url, screen, sleep=10):
+    def page_get(title, url, screen):
         logger.separator(title)
         logger.info(f"Get URL: {url}")
         driver.get(url)
-        screenshot(screen, sleep=sleep)
+        screenshot_and_wait(screen)
 
-    def click(title, xpath, screen, sleep=10):
+    def click(title, xpath, screen):
         logger.info(title)
         _button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
         _button.click()
-        screenshot(screen, sleep=sleep)
+        screenshot_and_wait(screen)
 
     def textbox(title, xpath, screen):
         logger.info(title)
         _box = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.XPATH, xpath)))
         _box.send_keys(keyword)
-        screenshot(screen, sleep=0)
+        screenshot_and_wait(screen, sleep=0)
         return _box
 
-    def enter(_box, title, screen, sleep=10):
+    def enter(_box, title, screen):
         logger.info(title)
         _box.send_keys(Keys.ENTER)
-        screenshot(screen, sleep=sleep)
+        screenshot_and_wait(screen)
 
-    def page_end(screen, title="Page End", sleep=10):
+    def page_end(screen, title="Page End"):
         logger.info(title)
         html = driver.find_element(By.TAG_NAME, "html")
         html.send_keys(Keys.END)
         html.send_keys(Keys.PAGE_UP)
-        screenshot(screen, sleep=sleep)
+        screenshot_and_wait(screen)
 
     page_get("IMDb Search Hash", "https://www.imdb.com/search/title/", "search_url")
     click("Get Expand All Button", '//span[@class="ipc-btn__text" and text()="Expand all"]', "after_expand_all_click")
