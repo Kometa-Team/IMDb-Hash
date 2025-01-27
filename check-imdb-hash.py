@@ -45,6 +45,7 @@ service = Service(chrome_driver_path)
 
 options = Options()
 options.add_argument("--headless")
+options.add_argument("--window-size=1920,1600")
 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36")
 
 with webdriver.Chrome(service=service, options=options) as driver:
