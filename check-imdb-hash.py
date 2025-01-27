@@ -115,7 +115,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
         logger.info(title)
         _box = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.XPATH, xpath)))
         _box.send_keys(keyword)
-        screenshot_and_wait(screen, sleep=0)
+        screenshot_and_wait(screen)
         return _box
 
     def enter(_box, title, screen):
