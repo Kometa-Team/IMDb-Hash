@@ -118,7 +118,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
         screenshot(screen, sleep=0)
         return _box
 
-    def enter(_box, title, screen, sleep=5):
+    def enter(_box, title, screen, sleep=10):
         logger.info(title)
         _box.send_keys(Keys.ENTER)
         screenshot(screen, sleep=sleep)
