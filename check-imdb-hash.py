@@ -117,6 +117,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
             _button.click()
             screenshot_and_wait(screen)
         except ElementClickInterceptedException as e:
+            screenshot_and_wait(f"{screen}.{count}")
             if count < 10:
                 click(title, xpath, screen, count=count + 1)
 
