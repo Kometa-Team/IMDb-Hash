@@ -1,5 +1,6 @@
 import os, re, sys, time
 from datetime import datetime, UTC
+from selenium.common import ElementClickInterceptedException
 from urllib.parse import unquote
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 11:
@@ -109,11 +110,15 @@ with webdriver.Chrome(service=service, options=options) as driver:
         driver.get(url)
         screenshot_and_wait(screen)
 
-    def click(title, xpath, screen):
-        logger.info(title)
-        _button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
-        _button.click()
-        screenshot_and_wait(screen)
+    def click(title, xpath, screen, count=0):
+        try:
+            logger.info(title)
+            _button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
+            _button.click()
+            screenshot_and_wait(screen)
+        except ElementClickInterceptedException as e:
+            if count < 10:
+                click(title, xpath, screen, count=count + 1)
 
     def textbox(title, xpath, screen):
         logger.info(title)
