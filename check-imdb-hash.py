@@ -112,13 +112,13 @@ with webdriver.Chrome(service=service, options=options) as driver:
 
     def click(title, xpath, screen, count=0):
         try:
-            logger.info(title)
+            logger.info(f"{title}{f' attempt {count + 1}' if count else ''}")
             _button = WebDriverWait(driver, 10).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
             _button.click()
             screenshot_and_wait(screen)
-        except ElementClickInterceptedException as e:
+        except ElementClickInterceptedException:
             screenshot_and_wait(f"{screen}.{count}")
-            if count < 10:
+            if count < 20:
                 click(title, xpath, screen, count=count + 1)
 
     def textbox(title, xpath, screen):
