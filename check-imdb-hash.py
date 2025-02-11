@@ -1,7 +1,7 @@
 import os, re, sys, time
 from datetime import datetime, UTC
-from selenium.common import ElementClickInterceptedException
 from urllib.parse import unquote
+from urllib3.exceptions import ReadTimeoutError
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 11:
     print("Version Error: Version: %s.%s.%s incompatible please use Python 3.11+" % (sys.version_info[0], sys.version_info[1], sys.version_info[2]))
@@ -10,6 +10,7 @@ if sys.version_info[0] != 3 or sys.version_info[1] < 11:
 try:
     from git import Repo
     from selenium import webdriver
+    from selenium.common import ElementClickInterceptedException
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.support.ui import WebDriverWait
@@ -104,11 +105,16 @@ with webdriver.Chrome(service=service, options=options) as driver:
         if args["trace"]:
             driver.save_screenshot(f"./logs/{screenshot_count:02}_{screen}.png")
 
-    def page_get(title, url, screen):
-        logger.separator(title)
-        logger.info(f"Get URL: {url}")
-        driver.get(url)
-        screenshot_and_wait(screen)
+    def page_get(title, url, screen, count=0):
+        try:
+            logger.separator(title)
+            logger.info(f"Get URL: {url}")
+            driver.get(url)
+            screenshot_and_wait(screen)
+        except ReadTimeoutError:
+            screenshot_and_wait(f"{screen}.{count}")
+            if count < 20:
+                page_get(title, url, screen, count=count + 1)
 
     def click(title, xpath, screen, count=0):
         try:
