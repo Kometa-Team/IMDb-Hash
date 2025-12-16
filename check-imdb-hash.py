@@ -148,7 +148,8 @@ with webdriver.Chrome(service=service, options=options) as driver:
     page_get("IMDb Search Hash", "https://www.imdb.com/search/title/", "search_url")
     click("Get Expand All Button", '//span[@class="ipc-btn__text" and text()="Expand all"]', "after_expand_all_click")
     search = textbox(f"Send Keyword: {keyword}", '//input[@aria-label="Title name"]', "after_sending_keyword")
-    click("Click Movie Button", '//span[normalize-space()='Movie']/parent::button', "after_movie_button_click")
+    click(
+    "Click Movie Button", "//span[normalize-space()='Movie']/parent::button", "after_movie_button_click")
     enter(search, "Get Search Results", "after_search_results_found")
     scan_for_hash("Search", keyword, "HASH")
 
