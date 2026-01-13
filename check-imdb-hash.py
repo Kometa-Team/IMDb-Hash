@@ -24,7 +24,7 @@ except (ModuleNotFoundError, ImportError):
     sys.exit(0)
 
 options = [
-    {"arg": "k",  "key": "keyword",      "env": "KEYWORD",      "type": "str",  "default": None,  "help": "Use this Keyword for the run. (Default: 2 Brothers & a Bride)"},
+    {"arg": "k",  "key": "keyword",      "env": "KEYWORD",      "type": "str",  "default": None,  "help": "Use this Keyword for the run. (Default: Pandora and the Flying Dutchman)"},
     {"arg": "tr", "key": "trace",        "env": "TRACE",        "type": "bool", "default": False, "help": "Run with extra trace logs and screenshots."},
     {"arg": "lr", "key": "log-requests", "env": "LOG_REQUESTS", "type": "bool", "default": False, "help": "Run with every request logged."}
 ]
@@ -36,7 +36,7 @@ logger.screen_width = 160
 logger.header(args, sub=True)
 logger.separator()
 logger.start()
-keyword = args["keyword"] if args["keyword"] else "2 Brothers & a Bride"
+keyword = args["keyword"] if args["keyword"] else "Pandora and the Flying Dutchman"
 
 folder = os.path.dirname(ChromeDriverManager().install())
 chrome_driver_path = os.path.join(folder, next((f for f in os.listdir(folder) if not f.endswith(".chromedriver"))))
@@ -48,7 +48,11 @@ service = Service(chrome_driver_path)
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--window-size=1920,1600")
-options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36")
+options.add_argument(
+    "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
 
 failed = []
 
@@ -149,7 +153,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
     click("Get Expand All Button", '//span[@class="ipc-btn__text" and text()="Expand all"]', "after_expand_all_click")
     search = textbox(f"Send Keyword: {keyword}", '//input[@aria-label="Title name"]', "after_sending_keyword")
     enter(search, "Get Search Results", "after_search_results_found")
-    scan_for_hash("Search", keyword, "HASH")
+    scan_for_hash("Search", "operationName=AdvancedTitleSearch", "HASH")
 
     page_get("IMDb List Hash", "https://www.imdb.com/list/ls005526372/", "list_url")
     page_end("after_list_page_end")
