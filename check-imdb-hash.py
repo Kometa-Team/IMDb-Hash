@@ -1,6 +1,8 @@
-import os, re, sys, time
+import json, os, re, sys, time
 from datetime import datetime, UTC
-from urllib.parse import unquote
+from urllib.parse import unquote, urlencode
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 from urllib3.exceptions import ReadTimeoutError
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 11:
@@ -26,7 +28,8 @@ except (ModuleNotFoundError, ImportError):
 options = [
     {"arg": "k",  "key": "keyword",      "env": "KEYWORD",      "type": "str",  "default": None,  "help": "Use this Keyword for the run. (Default: Pandora and the Flying Dutchman)"},
     {"arg": "tr", "key": "trace",        "env": "TRACE",        "type": "bool", "default": False, "help": "Run with extra trace logs and screenshots."},
-    {"arg": "lr", "key": "log-requests", "env": "LOG_REQUESTS", "type": "bool", "default": False, "help": "Run with every request logged."}
+    {"arg": "lr", "key": "log-requests", "env": "LOG_REQUESTS", "type": "bool", "default": False, "help": "Run with every request logged."},
+    {"arg": "r",  "key": "refresh",      "env": "REFRESH",      "type": "bool", "default": False, "help": "Refresh hashes in an interactive browser instead of only validating them."}
 ]
 script_name = "IMDb Hash"
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +41,80 @@ logger.separator()
 logger.start()
 keyword = args["keyword"] if args["keyword"] else "Pandora and the Flying Dutchman"
 
+hash_checks = [
+    ("Search", "AdvancedTitleSearch", "HASH", {
+        "first": 50, "locale": "en-US", "sortBy": "POPULARITY", "sortOrder": "ASC",
+        "titleTextConstraint": {"searchTerm": keyword}
+    }),
+    ("List", "TitleListMainPage", "LIST_HASH", {
+        "first": 250, "jumpToPosition": 251, "locale": "en-US", "lsConst": "ls005526372",
+        "sort": {"by": "LIST_ORDER", "order": "ASC"}
+    }),
+    ("Watchlist", "WatchListPageRefiner", "WATCHLIST_HASH", {
+        "first": 250, "jumpToPosition": 251, "locale": "en-US",
+        "sort": {"by": "LIST_ORDER", "order": "ASC"}, "urConst": "ur51920649"
+    })
+]
+
+
+def validate_hash(hash_type, operation_name, filename, variables):
+    logger.info(f"Validate {hash_type} Hash")
+    try:
+        with open(os.path.join(base_dir, filename), encoding="utf-8") as hash_file:
+            sha256_hash = hash_file.read().strip()
+        query = urlencode({
+            "operationName": operation_name,
+            "variables": json.dumps(variables, separators=(",", ":")),
+            "extensions": json.dumps(
+                {"persistedQuery": {"sha256Hash": sha256_hash, "version": 1}},
+                separators=(",", ":")
+            )
+        })
+        request = Request(
+            f"https://caching.graphql.imdb.com/?{query}",
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://www.imdb.com",
+                "User-Agent": "IMDb-Hash/1.0"
+            }
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                response_data = json.loads(response.read())
+        except HTTPError as error:
+            response_data = json.loads(error.read())
+        errors = response_data.get("errors", [])
+        invalid = any(
+            error.get("extensions", {}).get("code") == "PERSISTED_QUERY_NOT_FOUND"
+            or "PersistedQueryNotFound" in error.get("message", "")
+            for error in errors
+        )
+        if invalid:
+            logger.error(f"{hash_type} Hash is no longer registered by IMDb.")
+            return False
+        logger.info(f"{hash_type} Hash is valid: {sha256_hash}")
+        return True
+    except (FileNotFoundError, json.JSONDecodeError, TimeoutError, URLError) as error:
+        logger.error(f"Unable to validate {hash_type} Hash: {error}")
+        return False
+
+
+logger.separator("IMDb Persisted Query Validation")
+invalid_hashes = [
+    hash_type for hash_type, operation_name, filename, variables in hash_checks
+    if not validate_hash(hash_type, operation_name, filename, variables)
+]
+
+if not args["refresh"]:
+    logger.separator(f"{script_name} Finished\nTotal Runtime: {logger.runtime()}")
+    if invalid_hashes:
+        plural = "es" if len(invalid_hashes) > 1 else ""
+        sys.exit(
+            f"Invalid or unverifiable {' and '.join(invalid_hashes)} Hash{plural}. "
+            "Run check-imdb-hash.py --refresh locally to regenerate."
+        )
+    sys.exit(0)
+
 folder = os.path.dirname(ChromeDriverManager().install())
 chrome_driver_path = os.path.join(folder, next((f for f in os.listdir(folder) if not f.endswith(".chromedriver"))))
 logger.info(f"Keyword: {keyword}")
@@ -46,12 +123,13 @@ os.chmod(chrome_driver_path, 0o755)
 service = Service(chrome_driver_path)
 
 options = Options()
-options.add_argument("--headless")
+if os.environ.get("CI"):
+    options.add_argument("--headless")
 options.add_argument("--window-size=1920,1600")
 options.add_argument(
     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
+    "Chrome/150.0.0.0 Safari/537.36"
 )
 
 failed = []
