@@ -57,6 +57,34 @@ hash_checks = [
 ]
 
 
+class IMDbError(Exception):
+    pass
+
+
+def decode_imdb_response(response, status=None):
+    response_body = response.read()
+    response_status = status if status is not None else response.status
+    content_type = response.headers.get_content_type()
+
+    if response_status >= 400:
+        detail = response.reason
+        if content_type == "application/json":
+            try:
+                error_data = json.loads(response_body)
+                detail = error_data.get("message") or error_data.get("errors") or detail
+            except json.JSONDecodeError:
+                pass
+        raise IMDbError(f"HTTP {response_status} {detail} ({content_type})")
+
+    try:
+        return json.loads(response_body)
+    except json.JSONDecodeError as error:
+        raise IMDbError(
+            f"Expected a JSON response but received {content_type} "
+            f"(HTTP {response_status}): {error}"
+        ) from error
+
+
 def validate_hash(hash_type, operation_name, filename, variables):
     logger.info(f"Validate {hash_type} Hash")
     try:
@@ -75,14 +103,15 @@ def validate_hash(hash_type, operation_name, filename, variables):
             headers={
                 "Content-Type": "application/json",
                 "Origin": "https://www.imdb.com",
-                "User-Agent": "IMDb-Hash/1.0"
+                "User-Agent": "IMDb-Hash/1.0",
+                "X-Imdb-Client-Name": "imdb-web-next"
             }
         )
         try:
             with urlopen(request, timeout=30) as response:
-                response_data = json.loads(response.read())
+                response_data = decode_imdb_response(response)
         except HTTPError as error:
-            response_data = json.loads(error.read())
+            response_data = decode_imdb_response(error, status=error.code)
         errors = response_data.get("errors", [])
         invalid = any(
             error.get("extensions", {}).get("code") == "PERSISTED_QUERY_NOT_FOUND"
@@ -94,7 +123,10 @@ def validate_hash(hash_type, operation_name, filename, variables):
             return False
         logger.info(f"{hash_type} Hash is valid: {sha256_hash}")
         return True
-    except (FileNotFoundError, json.JSONDecodeError, TimeoutError, URLError) as error:
+    except IMDbError as error:
+        logger.error(f"IMDb Error: Unable to validate {hash_type} Hash: {error}")
+        return False
+    except (FileNotFoundError, TimeoutError, URLError) as error:
         logger.error(f"Unable to validate {hash_type} Hash: {error}")
         return False
 
