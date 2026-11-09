@@ -211,7 +211,7 @@ with webdriver.Chrome(service=service, options=options) as driver:
 
     screenshot_count = 0
 
-    def screenshot_and_wait(screen, sleep=20):
+    def screenshot_and_wait(screen, sleep=3):
         if sleep:
             time.sleep(sleep)
         global screenshot_count
@@ -219,12 +219,29 @@ with webdriver.Chrome(service=service, options=options) as driver:
         if args["trace"]:
             driver.save_screenshot(f"./logs/{screenshot_count:02}_{screen}.png")
 
+    def human_verification_present(browser):
+        page_text = browser.find_element(By.TAG_NAME, "body").text.casefold()
+        return "let's confirm you are human" in page_text or "complete the security check" in page_text
+
+    def wait_for_human_verification():
+        if not human_verification_present(driver):
+            return
+        logger.info("IMDb human verification detected. Complete it in the browser to continue.")
+        if args["trace"]:
+            driver.save_screenshot(f"./logs/{screenshot_count + 1:02}_human_verification_required.png")
+        WebDriverWait(driver, 3600, poll_frequency=1).until(
+            lambda browser: not human_verification_present(browser)
+        )
+        logger.info("IMDb human verification completed. Continuing refresh.")
+        screenshot_and_wait("after_human_verification")
+
     def page_get(title, url, screen, count=0):
         try:
             logger.separator(title)
             logger.info(f"Get URL: {url}")
             driver.get(url)
             screenshot_and_wait(screen)
+            wait_for_human_verification()
         except ReadTimeoutError:
             screenshot_and_wait(f"{screen}.{count}")
             if count < 20:
